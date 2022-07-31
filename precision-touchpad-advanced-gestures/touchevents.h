@@ -1,30 +1,23 @@
 #ifndef __TOUCHEVENTS_H__
 #define __TOUCHEVENTS_H__
 #include <Windows.h>
+#include <vector>
 
-static const unsigned int EVENT_TYPE_TOUCH_DOWN           = 0;
-static const unsigned int EVENT_TYPE_TOUCH_MOVE           = 1;
-static const unsigned int EVENT_TYPE_TOUCH_UP             = 2;
-static const unsigned int EVENT_TYPE_TOUCH_MOVE_UNCHANGED = 3;
-
-struct TOUCH_DATA
-{
-  ULONG TouchID;
-  ULONG X;
-  ULONG Y;
-  int OnSurface;
+enum TouchEventType {
+	TOUCH_DOWN,
+	TOUCH_MOVE,
+	TOUCH_UP,
+	TOUCH_MOVE_UNCHANGED
 };
 
-typedef struct TOUCH_DATA TOUCH_DATA;
-
-struct TOUCH_DATA_LIST
+struct TouchData
 {
-  TOUCH_DATA* Entries;
-  unsigned int Size;
+  int touchID = -1;
+  int x = 0;
+  int y = 0;
+  bool onSurface = false;
 };
 
-typedef struct TOUCH_DATA_LIST TOUCH_DATA_LIST;
-
-int mInterpretRawTouchInput(TOUCH_DATA_LIST* prevTouchesList, TOUCH_DATA curTouch, unsigned int* eventType);
+int interpretRawTouchInput(std::vector<TouchData>& prevTouchPoints, TouchData& currentTouch, TouchEventType* eventType);
 
 #endif  // __TOUCHEVENTS_H__

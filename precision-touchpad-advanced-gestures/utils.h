@@ -1,16 +1,15 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 #include <Windows.h>
-
+#include <vector>
 #include <hidusage.h>
 #include <hidpi.h>
 #pragma comment(lib, "hid.lib")
 
 #include <tchar.h>
 
-struct HID_TOUCH_LINK_COL_INFO
+struct hidTouchLinkCollectionInfo
 {
-  // LinkColID is an ID to parse HID report
   USHORT LinkColID;
   RECT PhysicalRect;
 
@@ -18,53 +17,32 @@ struct HID_TOUCH_LINK_COL_INFO
   // all these flags to identify which data the link collection contains.
   // https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/supporting-usages-in-multitouch-digitizer-drivers
 
-  int HasX;
-  int HasY;
-  int HasContactID;
-  int HasTipSwitch;
-  int HasConfidence;
-  int HasWidth;
-  int HasHeight;
-  int HasPressure;
+  int hasX;
+  int hasY;
+  int hasContactID;
+  int hasTipSwitch;
+  int hasConfidence;
+  int hasWidth;
+  int hasHeight;
+  int hasPressure;
 };
 
-typedef struct HID_TOUCH_LINK_COL_INFO HID_TOUCH_LINK_COL_INFO;
-
-struct HID_LINK_COL_INFO_LIST
-{
-  HID_TOUCH_LINK_COL_INFO* Entries;
-  unsigned int Size;
-};
-
-typedef struct HID_LINK_COL_INFO_LIST HID_LINK_COL_INFO_LIST;
-
-// C doesn't have map or dictionary so we are going to use array of struct to replace that
-struct HID_DEVICE_INFO
+struct hidDeviceInfo
 {
   TCHAR* Name;
   unsigned int cbName;
-  HID_LINK_COL_INFO_LIST LinkColInfoList;
+  std::vector<hidTouchLinkCollectionInfo> LinkColInfoList;
   PHIDP_PREPARSED_DATA PreparedData;
   UINT cbPreparsedData;
   USHORT ContactCountLinkCollection;
 };
 
-typedef struct HID_DEVICE_INFO HID_DEVICE_INFO;
-
-struct HID_DEVICE_INFO_LIST
-{
-  HID_DEVICE_INFO* Entries;
-  unsigned int Size;
-};
-
-typedef struct HID_DEVICE_INFO_LIST HID_DEVICE_INFO_LIST;
-
 void mGetLastError();
 
 void print_HidP_errors(NTSTATUS hidpReturnCode);
 
-int FindInputDeviceInList(HID_DEVICE_INFO_LIST* hidInfoList, TCHAR* deviceName, const unsigned int cbDeviceName, PHIDP_PREPARSED_DATA preparsedData, const UINT cbPreparsedData, unsigned int* foundHidIndex);
+int findInputDeviceInList(std::vector<hidDeviceInfo>& hidInfoList, TCHAR& deviceName, const unsigned int cbDeviceName, PHIDP_PREPARSED_DATA preparsedData, const UINT cbPreparsedData, unsigned int& foundHidIndex);
 
-int FindLinkCollectionInList(HID_LINK_COL_INFO_LIST* linkColInfoList, USHORT linkCollection, unsigned int* foundLinkColIdx);
+int findLinkCollectionInList(std::vector<hidTouchLinkCollectionInfo>& linkColInfoList, USHORT linkCollection, unsigned int& foundLinkColIdx);
 
 #endif  // __UTILS_H__
