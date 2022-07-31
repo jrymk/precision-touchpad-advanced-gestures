@@ -10,31 +10,31 @@
 
 struct hidTouchLinkCollectionInfo
 {
-  USHORT LinkColID;
-  RECT PhysicalRect;
+	USHORT linkCollectionID;
+	RECT physicalRect;
 
-  // As we cannot identify which link collection contains which data, we need
-  // all these flags to identify which data the link collection contains.
-  // https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/supporting-usages-in-multitouch-digitizer-drivers
+	// As we cannot identify which link collection contains which data, we need
+	// all these flags to identify which data the link collection contains.
+	// https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/supporting-usages-in-multitouch-digitizer-drivers
 
-  int hasX;
-  int hasY;
-  int hasContactID;
-  int hasTipSwitch;
-  int hasConfidence;
-  int hasWidth;
-  int hasHeight;
-  int hasPressure;
+	bool hasX;
+	bool hasY;
+	bool hasContactID;
+	bool hasTipSwitch;
+	bool hasConfidence;
+	bool hasWidth;
+	bool hasHeight;
+	bool hasPressure;
 };
 
 struct hidDeviceInfo
 {
-  TCHAR* Name;
-  unsigned int cbName;
-  std::vector<hidTouchLinkCollectionInfo> LinkColInfoList;
-  PHIDP_PREPARSED_DATA PreparedData;
-  UINT cbPreparsedData;
-  USHORT ContactCountLinkCollection;
+	TCHAR* Name;
+	unsigned int cbName;
+	std::vector<hidTouchLinkCollectionInfo> LinkColInfoList;
+	PHIDP_PREPARSED_DATA PreparedData;
+	UINT cbPreparsedData;
+	USHORT ContactCountLinkCollection;
 };
 
 void mGetLastError();

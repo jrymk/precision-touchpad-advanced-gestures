@@ -122,7 +122,7 @@ int findLinkCollectionInList(std::vector<hidTouchLinkCollectionInfo>& linkColInf
 		foundLinkColIdx = 0;
 		linkColInfoList.resize(1);
 
-		linkColInfoList[foundLinkColIdx].LinkColID = linkCollection;
+		linkColInfoList[foundLinkColIdx].linkCollectionID = linkCollection;
 		linkColInfoList[foundLinkColIdx].hasX = 0;
 		linkColInfoList[foundLinkColIdx].hasY = 0;
 		linkColInfoList[foundLinkColIdx].hasTipSwitch = 0;
@@ -136,7 +136,7 @@ int findLinkCollectionInList(std::vector<hidTouchLinkCollectionInfo>& linkColInf
 	{
 		for (unsigned int linkColIdx = 0; linkColIdx < linkColInfoList.size(); linkColIdx++)
 		{
-			if (linkColInfoList[linkColIdx].LinkColID == linkCollection)
+			if (linkColInfoList[linkColIdx].linkCollectionID == linkCollection)
 			{
 				foundLinkColIdx = linkColIdx;
 				break;
@@ -149,7 +149,7 @@ int findLinkCollectionInList(std::vector<hidTouchLinkCollectionInfo>& linkColInf
 		foundLinkColIdx = linkColInfoList.size();
 		linkColInfoList.resize(foundLinkColIdx + 1);
 
-		linkColInfoList[foundLinkColIdx].LinkColID = linkCollection;
+		linkColInfoList[foundLinkColIdx].linkCollectionID = linkCollection;
 		linkColInfoList[foundLinkColIdx].hasX = 0;
 		linkColInfoList[foundLinkColIdx].hasY = 0;
 		linkColInfoList[foundLinkColIdx].hasTipSwitch = 0;
