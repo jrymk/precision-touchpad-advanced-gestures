@@ -9,14 +9,14 @@
 #include <stdlib.h>
 #include <tchar.h>
 
-#include "termcolor.h"
 #include "utils.h"
-#include "touchevents.h"
 #include "touchpad.h"
 #include "devices.h"
+#include "gesture.h"
+#include "config.h"
 
 int setRemaining = 0;
-std::vector<TouchData> touchPoints;
+std::vector<TouchData> touchPoints(MAX_TOUCH_POINTS);
 
 LRESULT CALLBACK mBlockMouseInputHookProc(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
@@ -74,6 +74,17 @@ void handleInputMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// when data comes in, it comes in <contact count> messages. in order to get data from the same time, only read data when setRemaining is 0. the last data read should be "touch_up"
 			if (!setRemaining) {
+				inputTouchPoints(touchPoints);
+
+				HANDLE hOut;
+				COORD Position;
+
+				hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+				Position.X = 0;
+				Position.Y = 0;
+				SetConsoleCursorPosition(hOut, Position);
+
 				for (int i = 0; i < touchPoints.size(); i++) {
 					std::string str = "---- ";
 					switch (touchPoints[i].eventType) {
@@ -94,12 +105,44 @@ void handleInputMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 						break;
 
 					}
+
+					Position.X = 0;
+					Position.Y = i;
+					SetConsoleCursorPosition(hOut, Position);
+
+					printf("[%d] ", i);
 					printf(str.c_str());
+					printf(" %.3f", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - activeStroke[i].beginTime).count() / 1000.f);
+
+					printf("\n");
 
 					if (touchPoints[i].eventType == TOUCH_UP)
 						touchPoints[i].eventType = RELEASED;
+
+					Position.X = int(touchPoints[i].x / 3880.f * 120);
+					Position.Y = int(touchPoints[i].y / 3880.f * 50);
+					SetConsoleCursorPosition(hOut, Position);
+					
+					if (touchPoints[i].onSurface) {
+						if (i == 0)
+							printf(BG_RED);
+						if (i == 1)
+							printf(BG_YELLOW);
+						if (i == 2)
+							printf(BG_GREEN);
+						if (i == 3)
+							printf(BG_BRIGHT_BLUE);
+						if (i == 4)
+							printf(BG_CYAN);
+						printf("*");
+						printf(RESET_COLOR);
+					}
 				}
+
 				printf("\n");
+
+				if (touchPoints[0].onSurface + touchPoints[1].onSurface + touchPoints[2].onSurface + touchPoints[3].onSurface + touchPoints[4].onSurface == 0)
+					system("cls");
 			}
 			//printf(FG_GREEN);
 			//printf("LinkColId: %d, touchID: %d, tipSwitch: %d, position: (%d, %d), eventType: %s\n", deviceInfo.linkCollectionInfoList[0].linkCollectionID, currentTouch.touchID, currentTouch.onSurface, currentTouch.x, currentTouch.y, touchTypeStr);

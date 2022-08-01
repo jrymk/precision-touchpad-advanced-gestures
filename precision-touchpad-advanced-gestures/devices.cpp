@@ -1,7 +1,6 @@
 #include "devices.h"
 
 #include <stdio.h>
-#include "termcolor.h"
 
 std::vector<hidDeviceInfo> deviceInfoList;
 

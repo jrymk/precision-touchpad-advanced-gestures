@@ -1,6 +1,5 @@
 #include "touchpad.h"
 #include "devices.h"
-#include "termcolor.h"
 
 #include <string>
 
@@ -151,7 +150,7 @@ bool readInput(UINT rawInputSize, PRAWINPUT rawInputData, hidDeviceInfo& deviceI
 		}
 
 		free(buttonUsageArray);
-	
+
 		touchData.touchID = touchId;
 		touchData.x = xPos;
 		touchData.y = yPos;
@@ -159,4 +158,35 @@ bool readInput(UINT rawInputSize, PRAWINPUT rawInputData, hidDeviceInfo& deviceI
 		return true;
 	}
 	return false;
+}
+
+int saveTouchInput(std::vector<TouchData>& touchPoints, TouchData& newTouch)
+{
+	for (auto& prevTouch : touchPoints)
+	{
+		if (prevTouch.touchID == newTouch.touchID)
+		{
+			if (prevTouch.onSurface && newTouch.onSurface)
+			{
+				if ((prevTouch.x == newTouch.x) && (prevTouch.y == newTouch.y))
+					newTouch.eventType = TouchEventType::TOUCH_MOVE_UNCHANGED;
+				else
+					newTouch.eventType = TouchEventType::TOUCH_MOVE;
+			}
+			else if (prevTouch.onSurface && !newTouch.onSurface)
+				newTouch.eventType = TouchEventType::TOUCH_UP;
+			else if (!prevTouch.onSurface && newTouch.onSurface)
+				newTouch.eventType = TouchEventType::TOUCH_DOWN;
+			else
+				newTouch.eventType = TouchEventType::RELEASED; // this shouldn't be the correct way to do so
+
+			// update touch data
+			prevTouch = newTouch;
+
+			return 0;
+		}
+	}
+
+	touchPoints[newTouch.touchID] = newTouch;
+	return 0;
 }

@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <tchar.h>
 
-#include "termcolor.h"
 #include "utils.h"
 
 void getLastError()
