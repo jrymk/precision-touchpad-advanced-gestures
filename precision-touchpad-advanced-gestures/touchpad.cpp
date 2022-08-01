@@ -1,231 +1,162 @@
-#include <Windows.h>
-#include <tchar.h>
-
-#include <hidusage.h>
-#include <hidpi.h>
-#pragma comment(lib, "hid.lib")
-
-#include <stdio.h>
-
 #include "touchpad.h"
-
+#include "devices.h"
 #include "termcolor.h"
-#include "utils.h"
 
-int getRawInputDeviceName(_In_ HANDLE hDevice, _Out_ TCHAR** deviceName, _Out_ UINT* nameSize, _Out_ unsigned int* cbDeviceName)
-{
-	int ret = 0;
-	UINT winReturnCode;
+#include <string>
 
-	winReturnCode = GetRawInputDeviceInfo(_In_ hDevice, RIDI_DEVICENAME, NULL, nameSize);
-	if (winReturnCode == (UINT)-1)
+bool checkInput(UINT rawInputSize, PRAWINPUT rawInputData, hidDeviceInfo& deviceInfo) {
+	if (rawInputData->header.dwType != RIM_TYPEHID)
+		return false;
+
+	DWORD count = rawInputData->data.hid.dwCount;
+	BYTE* rawData = rawInputData->data.hid.bRawData;
+
+	if (count == 0)
+		return false;
+
+	std::wstring deviceName;
+	getRawInputDeviceName(rawInputData->header.hDevice, deviceName);
+
+	unsigned int foundHidIdx = (unsigned int)-1;
+
+	for (unsigned int touchpadIndex = 0; touchpadIndex < deviceInfoList.size(); touchpadIndex++)
 	{
-		ret = -1;
-		printf(FG_RED);
-		printf("GetRawInputDeviceInfo failed\n");
-		printf(RESET_COLOR);
-		mGetLastError();
-		exit(-1);
-	}
-	else
-	{
-		(*cbDeviceName) = (unsigned int)(sizeof(TCHAR) * ((*nameSize) + 1));
-		(*deviceName) = (TCHAR*)malloc((*cbDeviceName));
-
-		(*deviceName)[(*nameSize)] = 0;
-
-		winReturnCode = GetRawInputDeviceInfo(hDevice, RIDI_DEVICENAME, (*deviceName), nameSize);
-		if (winReturnCode == (UINT)-1)
+		int compareNameResult = deviceName.compare(deviceInfoList[touchpadIndex].name);
+		if (compareNameResult == 0)
 		{
-			ret = -1;
-			printf(FG_RED);
-			printf("GetRawInputDeviceInfo failed\n");
-			printf(RESET_COLOR);
-			exit(-1);
-		}
-		else if (winReturnCode != (*nameSize))
-		{
-			ret = -1;
-			printf(FG_RED);
-			printf("GetRawInputDeviceInfo does not return the expected size %d (actual) vs %d (expected) at  %s:%d\n", winReturnCode, (*nameSize));
-			printf(RESET_COLOR);
-			exit(-1);
+			//wprintf(deviceInfoList[touchpadIndex].name.c_str());
+			foundHidIdx = touchpadIndex;
+			deviceInfo = deviceInfoList[foundHidIdx];
+
+			if (deviceInfo.linkCollectionInfoList.empty())
+			{
+				printf(FG_RED);
+				printf("Cannot find any LinkCollection(s). Try parse the PREPARED_DATA may help. TODO\n");
+				printf(RESET_COLOR);
+				return false;
+			}
+			else if (deviceInfo.preparsedData == nullptr)
+			{
+				printf(FG_RED);
+				printf("Cannot find PreparsedData\n");
+				printf(RESET_COLOR);
+				return false;
+			}
+			return true;
 		}
 	}
-	return ret;
+
+	return false;
 }
 
-int getRawInputDeviceList(_Out_ UINT* numDevices, _Out_ RAWINPUTDEVICELIST** deviceList)
-{
-	int ret = 0;
-	UINT winReturnCode;
+bool readInput(UINT rawInputSize, PRAWINPUT rawInputData, hidDeviceInfo& deviceInfo, TouchData& touchData, int& setRemaining) {
+	NTSTATUS hidpReturnCode;
+	ULONG usageValue;
+	PHIDP_PREPARSED_DATA preparsedHIDData = deviceInfo.preparsedData;
 
-	winReturnCode = GetRawInputDeviceList(NULL, numDevices, sizeof(RAWINPUTDEVICELIST));
-	if (winReturnCode == (UINT)-1)
+	if (deviceInfo.contactCountLinkCollection == (USHORT)-1)
 	{
-		ret = -1;
 		printf(FG_RED);
-		printf("GetRawInputDeviceList failed\n");
+		printf("Cannot find contact count Link Collection!\n");
 		printf(RESET_COLOR);
-		mGetLastError();
-		exit(-1);
+		return false;
+	}
+
+	hidpReturnCode = HidP_GetUsageValue(HidP_Input, HID_USAGE_PAGE_DIGITIZER, deviceInfo.contactCountLinkCollection, HID_USAGE_DIGITIZER_CONTACT_COUNT, &usageValue, preparsedHIDData, (PCHAR)rawInputData->data.hid.bRawData, rawInputData->data.hid.dwSizeHid);
+
+	if (hidpReturnCode != HIDP_STATUS_SUCCESS)
+	{
+		printf(FG_RED);
+		printf("Failed to read number of contacts!\n");
+		printf(RESET_COLOR);
+		printHidPErrors(hidpReturnCode);
+		return false;
+	}
+
+	ULONG numContacts = usageValue;
+
+	if (numContacts > 0 || setRemaining == 0) {
+		setRemaining = numContacts - 1;
+		/*printf(FG_BRIGHT_BLUE);
+		printf("numContacts: %d\n", numContacts);
+		printf(RESET_COLOR);*/
 	}
 	else
+		setRemaining--;
+
+	hidTouchLinkCollectionInfo collectionInfo = deviceInfo.linkCollectionInfoList[0];
+
+	if (collectionInfo.hasX && collectionInfo.hasY && collectionInfo.hasContactID && collectionInfo.hasTipSwitch)
 	{
-		(*deviceList) = (RAWINPUTDEVICELIST*)malloc(sizeof(RAWINPUTDEVICELIST) * (*numDevices));
-		winReturnCode = GetRawInputDeviceList((*deviceList), numDevices, sizeof(RAWINPUTDEVICELIST));
-		if (winReturnCode == (UINT)-1)
+		hidpReturnCode = HidP_GetUsageValue(HidP_Input, 0x01, collectionInfo.linkCollectionID, 0x30, &usageValue, preparsedHIDData, (PCHAR)rawInputData->data.hid.bRawData, rawInputData->data.hid.dwSizeHid);
+
+		if (hidpReturnCode != HIDP_STATUS_SUCCESS)
 		{
-			ret = -1;
 			printf(FG_RED);
-			printf("GetRawInputDeviceList failed\n");
+			printf("Failed to read x position\n");
 			printf(RESET_COLOR);
-			mGetLastError();
-			// TODO should we also free (*deviceList) here?
-			exit(-1);
+			printHidPErrors(hidpReturnCode);
+			return false;
 		}
-	}
 
-	return ret;
-}
+		ULONG xPos = usageValue;
 
-int getRawInputDevicePreparsedData(_In_ HANDLE hDevice, _Out_ PHIDP_PREPARSED_DATA* data, _Out_ UINT* cbSize)
-{
-	int ret = 0;
-	UINT winReturnCode;
-
-	if (data == NULL)
-	{
-		ret = -1;
-		printf(FG_RED);
-		printf("(PHIDP_PREPARSED_DATA*) data parameter is NULL!\n");
-		printf(RESET_COLOR);
-
-		exit(-1);
-	}
-	else if (cbSize == NULL)
-	{
-		ret = -1;
-		printf(FG_RED);
-		printf("The cbSize parameter is NULL!\n");
-		printf(RESET_COLOR);
-
-		exit(-1);
-	}
-	else if ((*data) != NULL)
-	{
-		ret = -1;
-		printf(FG_RED);
-		printf("(PHIDP_PREPARSED_DATA) data parameter is not NULL! Please free your memory and set the point to NULL.\n");
-		printf(RESET_COLOR);
-
-		exit(-1);
-	}
-	else
-	{
-		winReturnCode = GetRawInputDeviceInfo(hDevice, RIDI_PREPARSEDDATA, NULL, cbSize);
-		if (winReturnCode == (UINT)-1)
+		hidpReturnCode = HidP_GetUsageValue(HidP_Input, 0x01, collectionInfo.linkCollectionID, 0x31, &usageValue, preparsedHIDData, (PCHAR)rawInputData->data.hid.bRawData, rawInputData->data.hid.dwSizeHid);
+		if (hidpReturnCode != HIDP_STATUS_SUCCESS)
 		{
-			ret = -1;
 			printf(FG_RED);
-			printf("GetRawInputDeviceInfo failed\n");
+			printf("Failed to read y position\n");
 			printf(RESET_COLOR);
-			mGetLastError();
-
-			exit(-1);
+			printHidPErrors(hidpReturnCode);
+			return false;
 		}
-		else
-		{
-			(*data) = (PHIDP_PREPARSED_DATA)malloc((*cbSize));
 
-			winReturnCode = GetRawInputDeviceInfo(hDevice, RIDI_PREPARSEDDATA, (*data), cbSize);
-			if (winReturnCode == (UINT)-1)
+		ULONG yPos = usageValue;
+
+		hidpReturnCode = HidP_GetUsageValue(HidP_Input, HID_USAGE_PAGE_DIGITIZER, collectionInfo.linkCollectionID, HID_USAGE_DIGITIZER_CONTACT_ID, &usageValue, preparsedHIDData, (PCHAR)rawInputData->data.hid.bRawData, rawInputData->data.hid.dwSizeHid);
+		if (hidpReturnCode != HIDP_STATUS_SUCCESS)
+		{
+			printf(FG_RED);
+			printf("Failed to read touch ID\n");
+			printf(RESET_COLOR);
+			printHidPErrors(hidpReturnCode);
+			return false;
+		}
+
+		ULONG touchId = usageValue;
+		const ULONG maxNumButtons = HidP_MaxUsageListLength(HidP_Input, HID_USAGE_PAGE_DIGITIZER, preparsedHIDData);
+		ULONG _maxNumButtons = maxNumButtons;
+		USAGE* buttonUsageArray = (USAGE*)malloc(sizeof(USAGE) * maxNumButtons);
+
+		hidpReturnCode = HidP_GetUsages(HidP_Input, HID_USAGE_PAGE_DIGITIZER, collectionInfo.linkCollectionID, buttonUsageArray, &_maxNumButtons, preparsedHIDData, (PCHAR)rawInputData->data.hid.bRawData, rawInputData->data.hid.dwSizeHid);
+
+		if (hidpReturnCode != HIDP_STATUS_SUCCESS)
+		{
+			printf(FG_RED);
+			printf("HidP_GetUsages failed!\n");
+			printf(RESET_COLOR);
+			printHidPErrors(hidpReturnCode);
+			return false;
+		}
+
+		int isContactOnSurface = 0;
+
+		for (ULONG usageIdx = 0; usageIdx < maxNumButtons; usageIdx++)
+		{
+			if (buttonUsageArray[usageIdx] == HID_USAGE_DIGITIZER_TIP_SWITCH)
 			{
-				ret = -1;
-				printf(FG_RED);
-				printf("GetRawInputDeviceInfo failed\n");
-				printf(RESET_COLOR);
-				mGetLastError();
-
-				exit(-1);
+				isContactOnSurface = 1;
+				break;
 			}
 		}
+
+		free(buttonUsageArray);
+	
+		touchData.touchID = touchId;
+		touchData.x = xPos;
+		touchData.y = yPos;
+		touchData.onSurface = isContactOnSurface;
+		return true;
 	}
-
-	return ret;
-}
-
-int getRawInputData(_In_ HRAWINPUT hRawInput, _Out_ PUINT pcbSize, _Out_ LPVOID* pData)
-{
-	int ret = 0;
-	UINT winReturnCode;
-
-	if (pcbSize == NULL)
-	{
-		ret = -1;
-		printf(FG_RED);
-		printf("pcbSize parameter is NULL!\n");
-		printf(RESET_COLOR);
-
-		exit(-1);
-	}
-	else if (pData == NULL)
-	{
-		ret = -1;
-		printf(FG_RED);
-		printf("(LPVOID*) pData parameter is NULL!\n");
-		printf(RESET_COLOR);
-
-		exit(-1);
-	}
-	else if ((*pData) != NULL)
-	{
-		ret = -1;
-		printf(FG_RED);
-		printf("(LPVOID) pData value is not NULL! Please free your memory and set the pointer value to NULL.\n");
-		printf(RESET_COLOR);
-
-		exit(-1);
-	}
-	else
-	{
-		winReturnCode = GetRawInputData(hRawInput, RID_INPUT, NULL, pcbSize, sizeof(RAWINPUTHEADER));
-		if (winReturnCode == (UINT)-1)
-		{
-			ret = -1;
-			printf(FG_RED);
-			printf("GetRawInputData failed\n");
-			printf(RESET_COLOR);
-			mGetLastError();
-
-			exit(-1);
-		}
-		else
-		{
-			(*pData) = (LPVOID)malloc((*pcbSize));
-
-			winReturnCode = GetRawInputData(hRawInput, RID_INPUT, (*pData), pcbSize, sizeof(RAWINPUTHEADER));
-			if (winReturnCode == (UINT)-1)
-			{
-				ret = -1;
-				printf(FG_RED);
-				printf("GetRawInputData failed\n");
-				printf(RESET_COLOR);
-				mGetLastError();
-
-				exit(-1);
-			}
-			else if (winReturnCode != (*pcbSize))
-			{
-				ret = -1;
-				printf(FG_RED);
-				printf("GetRawInputData failed.\n");
-				printf("The return value - the number of byte(s) copied into pData (%d) is not equal the expected value (%d).\n", winReturnCode, (*pcbSize));
-				printf(RESET_COLOR);
-				exit(-1);
-			}
-		}
-	}
-
-	return ret;
+	return false;
 }

@@ -127,12 +127,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="devices.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="touchevents.cpp" />
     <ClCompile Include="touchpad.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="devices.h" />
     <ClInclude Include="termcolor.h" />
     <ClInclude Include="touchevents.h" />
     <ClInclude Include="touchpad.h" />

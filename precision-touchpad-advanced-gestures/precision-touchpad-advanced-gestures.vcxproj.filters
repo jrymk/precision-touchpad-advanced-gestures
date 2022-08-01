@@ -21,10 +21,13 @@
     <ClCompile Include="touchevents.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="touchpad.cpp">
+    <ClCompile Include="utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="utils.cpp">
+    <ClCompile Include="devices.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="touchpad.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,10 +38,13 @@
     <ClInclude Include="touchevents.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="touchpad.h">
+    <ClInclude Include="utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="utils.h">
+    <ClInclude Include="devices.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="touchpad.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

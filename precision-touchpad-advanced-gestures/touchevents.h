@@ -1,9 +1,11 @@
-#ifndef __TOUCHEVENTS_H__
-#define __TOUCHEVENTS_H__
+#pragma once
+#ifndef _TOUCHEVENTS_H_
+#define _TOUCHEVENTS_H_
 #include <Windows.h>
 #include <vector>
 
 enum TouchEventType {
+	RELEASED,
 	TOUCH_DOWN,
 	TOUCH_MOVE,
 	TOUCH_UP,
@@ -16,8 +18,9 @@ struct TouchData
   int x = 0;
   int y = 0;
   bool onSurface = false;
+  TouchEventType eventType = RELEASED;
 };
 
-int interpretRawTouchInput(std::vector<TouchData>& prevTouchPoints, TouchData& currentTouch, TouchEventType* eventType);
+int saveTouchInput(std::vector<TouchData>& touchPoints, TouchData& newTouch);
 
-#endif  // __TOUCHEVENTS_H__
+#endif

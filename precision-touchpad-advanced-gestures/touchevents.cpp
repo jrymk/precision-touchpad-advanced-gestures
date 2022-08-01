@@ -4,52 +4,51 @@
 #include "termcolor.h"
 #include "utils.h"
 
-int interpretRawTouchInput(std::vector<TouchData>& prevTouchPoints, TouchData& currentTouch, TouchEventType* eventType)
+int saveTouchInput(std::vector<TouchData>& touchPoints, TouchData& newTouch)
 {
-	if (prevTouchPoints.empty())
+	// make sure touch points fits the new touch id
+	if (newTouch.touchID >= touchPoints.size())
+		touchPoints.resize(newTouch.touchID + 1);
+
+	if (touchPoints.empty())
 	{
-		prevTouchPoints.resize(1);
-		if (currentTouch.onSurface)
-			(*eventType) = TouchEventType::TOUCH_DOWN;
+		touchPoints.resize(1);
+		if (newTouch.onSurface)
+			newTouch.eventType = TOUCH_DOWN;
 		else
-			(*eventType) = TouchEventType::TOUCH_UP;
+			newTouch.eventType = TOUCH_UP;
 
 		return 0;
 	}
 	else
 	{
-		for (auto& prevTouch : prevTouchPoints)
+		for (auto& prevTouch : touchPoints)
 		{
-			if (prevTouch.touchID == currentTouch.touchID)
+			if (prevTouch.touchID == newTouch.touchID)
 			{
-				if (prevTouch.onSurface && currentTouch.onSurface)
+				if (prevTouch.onSurface && newTouch.onSurface)
 				{
-					if ((prevTouch.x == currentTouch.x) && (prevTouch.y == currentTouch.y))
-						(*eventType) = TouchEventType::TOUCH_MOVE_UNCHANGED;
+					if ((prevTouch.x == newTouch.x) && (prevTouch.y == newTouch.y))
+						newTouch.eventType = TouchEventType::TOUCH_MOVE_UNCHANGED;
 					else
-						(*eventType) = TouchEventType::TOUCH_MOVE;
+						newTouch.eventType = TouchEventType::TOUCH_MOVE;
 				}
-				else if ((prevTouch.onSurface != 0) && (currentTouch.onSurface == 0))
-					(*eventType) = TouchEventType::TOUCH_UP;
-				else if ((prevTouch.onSurface == 0) && (currentTouch.onSurface != 0))
-					(*eventType) = TouchEventType::TOUCH_DOWN;
+				else if (prevTouch.onSurface && !newTouch.onSurface)
+					newTouch.eventType = TouchEventType::TOUCH_UP;
+				else if (!prevTouch.onSurface && newTouch.onSurface)
+					newTouch.eventType = TouchEventType::TOUCH_DOWN;
 				else
-					(*eventType) = TouchEventType::TOUCH_UP;
+					newTouch.eventType = TouchEventType::RELEASED; // this shouldn't be the correct way to do so
 
 				// update touch data
-				prevTouch = currentTouch;
+				prevTouch = newTouch;
 
 				return 0;
 			}
 		}
 	}
 
-	prevTouchPoints.resize(prevTouchPoints.size() + 1, currentTouch);
-
-	if (currentTouch.onSurface)
-		(*eventType) = TouchEventType::TOUCH_MOVE;
-	else
-		(*eventType) = TouchEventType::TOUCH_UP;
+	touchPoints[newTouch.touchID] = newTouch;
 
 	return 0;
 }

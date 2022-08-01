@@ -1,12 +1,12 @@
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#pragma once
+#ifndef _UTILS_H_
+#define _UTILS_H_
 #include <Windows.h>
 #include <vector>
+#include <string>
 #include <hidusage.h>
 #include <hidpi.h>
 #pragma comment(lib, "hid.lib")
-
-#include <tchar.h>
 
 struct hidTouchLinkCollectionInfo
 {
@@ -29,20 +29,15 @@ struct hidTouchLinkCollectionInfo
 
 struct hidDeviceInfo
 {
-	TCHAR* Name;
-	unsigned int cbName;
-	std::vector<hidTouchLinkCollectionInfo> LinkColInfoList;
-	PHIDP_PREPARSED_DATA PreparedData;
-	UINT cbPreparsedData;
-	USHORT ContactCountLinkCollection;
+	std::wstring name;
+	std::vector<hidTouchLinkCollectionInfo> linkCollectionInfoList;
+	PHIDP_PREPARSED_DATA preparsedData = nullptr;
+	unsigned int preparsedDataSize = 0;
+	unsigned int contactCountLinkCollection = 0;
 };
 
-void mGetLastError();
+void getLastError();
 
-void print_HidP_errors(NTSTATUS hidpReturnCode);
+void printHidPErrors(NTSTATUS hidpReturnCode);
 
-int findInputDeviceInList(std::vector<hidDeviceInfo>& hidInfoList, TCHAR& deviceName, const unsigned int cbDeviceName, PHIDP_PREPARSED_DATA preparsedData, const UINT cbPreparsedData, unsigned int& foundHidIndex);
-
-int findLinkCollectionInList(std::vector<hidTouchLinkCollectionInfo>& linkColInfoList, USHORT linkCollection, unsigned int& foundLinkColIdx);
-
-#endif  // __UTILS_H__
+#endif
